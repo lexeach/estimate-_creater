@@ -1,6 +1,10 @@
 import { jsPDF } from 'jspdf';
 import { money, dateText } from './api.js';
 const businessName = import.meta.env.VITE_BUSINESS_NAME || 'Your Sales Business';
+// jsPDF's built-in Helvetica does not reliably render the Indian rupee glyph.
+// Use a clear ASCII currency label in PDFs to prevent missing-glyph and spacing artifacts.
+const pdfAmount = value => Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pdfMoney = value => `INR ${pdfAmount(value)}`;
 function writeWrapped(doc, text, x, y, width, lineHeight = 5) {
   const lines = doc.splitTextToSize(String(text || ''), width);
   doc.text(lines, x, y); return y + lines.length * lineHeight;
@@ -38,7 +42,7 @@ export function estimatePdf(estimate) {
   const x0=14, x1=83, x2=111, x3=130, x4=153, x5=176, x6=196;
   const cols = [x0,x1,x2,x3,x4,x5,x6];
   doc.setFillColor(23,60,53); doc.roundedRect(x0,y-5,182,9,1,1,'F'); doc.setTextColor(255,255,255); doc.setFont(undefined,'bold'); doc.setFontSize(8);
-  ['Product / Company','Qty','Rate','Disc.','Tax','Amount'].forEach((t,i) => doc.text(t, [x0,x1,x2,x3,x4,x5][i], y, i ? { align:'right' } : {}));
+  ['Product / Company','Qty','Rate (INR)','Disc.','Tax','Amount (INR)'].forEach((t,i) => doc.text(t, [x0,x1,x2,x3,x4,x5][i], y, i ? { align:'right' } : {}));
   doc.setTextColor(35,45,43); doc.setFont(undefined,'normal'); y += 4;
   for (let idx=0; idx<(estimate.items||[]).length; idx++) {
     const item=estimate.items[idx];
@@ -51,8 +55,8 @@ export function estimatePdf(estimate) {
     for (const x of cols) doc.line(x,y-2,x,y+rowH-2);
     doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.text(String(item.productName||''),x0+2,y+3);
     doc.setFont(undefined,'normal'); doc.setTextColor(105,119,112); doc.setFontSize(7.5); doc.text(String(item.companyName||''),x0+2,y+7);
-    doc.setTextColor(35,45,43); doc.setFontSize(8);
-    doc.text(String(item.quantity),x1-2,y+4,{align:'right'}); doc.text(money(item.unitPrice),x2-2,y+4,{align:'right'}); doc.text(`${item.discountPercent||0}%`,x3-2,y+4,{align:'right'}); doc.text(`${item.taxRate||0}%`,x4-2,y+4,{align:'right'}); doc.setFont(undefined,'bold'); doc.text(money(item.lineTotal),x6-2,y+4,{align:'right'}); doc.setFont(undefined,'normal');
+    doc.setTextColor(35,45,43); doc.setFontSize(7.2);
+    doc.text(String(item.quantity),x1-2,y+4,{align:'right'}); doc.text(pdfAmount(item.unitPrice),x2-2,y+4,{align:'right'}); doc.text(`${item.discountPercent||0}%`,x3-2,y+4,{align:'right'}); doc.text(`${item.taxRate||0}%`,x4-2,y+4,{align:'right'}); doc.setFont(undefined,'bold'); doc.text(pdfAmount(item.lineTotal),x6-2,y+4,{align:'right'}); doc.setFont(undefined,'normal');
     y += rowH;
   }
   y += 7; if (y > 240) { doc.addPage(); y = 20; }
@@ -62,7 +66,7 @@ export function estimatePdf(estimate) {
   for (const [label, value] of totals) {
     const grand=label==='GRAND TOTAL';
     if(grand){doc.setDrawColor(23,60,53);doc.setLineWidth(0.6);doc.line(totalBoxX+3,y-4,totalBoxX+totalBoxW-3,y-4);doc.setTextColor(23,60,53);}
-    doc.setFont(undefined, grand ? 'bold' : 'normal'); doc.text(label, totalBoxX+5, y); doc.text(money(value), totalBoxX+totalBoxW-4, y, { align:'right' }); y += 7;
+    doc.setFont(undefined, grand ? 'bold' : 'normal'); doc.text(label, totalBoxX+5, y); doc.text(pdfMoney(value), totalBoxX+totalBoxW-4, y, { align:'right' }); y += 7;
   }
   doc.setTextColor(35,45,43);
   const bankLines = [['Account holder',brand.bankAccountHolder],['Bank',brand.bankName],['Account number',brand.accountNumber],['IFSC',brand.ifscCode],['Branch',brand.branch],['UPI ID',brand.upiId]].filter(([,v])=>String(v||'').trim());
@@ -94,9 +98,9 @@ export function companyOrderPdf(order, companyOrder) {
   y+=5; doc.setFont(undefined,'bold'); doc.text('Customer / delivery details',14,y); doc.setFont(undefined,'normal'); y+=6;
   y=writeWrapped(doc,order.clientSnapshot?.name,14,y,160); y=writeWrapped(doc,order.clientSnapshot?.businessName,14,y,160); y=writeWrapped(doc,order.clientSnapshot?.phone,14,y,160); y=writeWrapped(doc,order.clientSnapshot?.shippingAddress || order.clientSnapshot?.billingAddress,14,y,160); y+=8;
   doc.setFillColor(235,241,238); doc.rect(14,y-5,182,9,'F'); doc.setFont(undefined,'bold');
-  doc.text('Product',14,y); doc.text('Qty',128,y,{align:'right'}); doc.text('Rate',158,y,{align:'right'}); doc.text('Amount',196,y,{align:'right'}); doc.setFont(undefined,'normal'); y+=8;
-  for (const item of companyOrder.items || []) { y=writeWrapped(doc,item.productName,14,y,95); doc.text(String(item.quantity),128,y-4,{align:'right'}); doc.text(money(item.unitPrice),158,y-4,{align:'right'}); doc.text(money(item.lineTotal),196,y-4,{align:'right'}); y+=4; doc.line(14,y,196,y); y+=5; }
-  y+=5; doc.setFont(undefined,'bold'); doc.text('Company order total',130,y); doc.text(money(companyOrder.total),196,y,{align:'right'}); y+=10;
+  doc.text('Product',14,y); doc.text('Qty',128,y,{align:'right'}); doc.text('Rate (INR)',158,y,{align:'right'}); doc.text('Amount (INR)',196,y,{align:'right'}); doc.setFont(undefined,'normal'); y+=8;
+  for (const item of companyOrder.items || []) { y=writeWrapped(doc,item.productName,14,y,95); doc.text(String(item.quantity),128,y-4,{align:'right'}); doc.text(pdfAmount(item.unitPrice),158,y-4,{align:'right'}); doc.text(pdfAmount(item.lineTotal),196,y-4,{align:'right'}); y+=4; doc.line(14,y,196,y); y+=5; }
+  y+=5; doc.setFont(undefined,'bold'); doc.text('Company order total',130,y); doc.text(pdfMoney(companyOrder.total),196,y,{align:'right'}); y+=10;
   doc.setFont(undefined,'normal'); doc.setFontSize(9); writeWrapped(doc,`Master order: ${order.orderNumber}. Please confirm availability, expected dispatch date and applicable fulfilment terms.`,14,y,180);
   doc.save(`${companyOrder.companyOrderNumber || order.orderNumber}-company-order.pdf`);
 }
