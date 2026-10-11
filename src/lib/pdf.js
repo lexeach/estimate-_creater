@@ -63,10 +63,18 @@ export function estimatePdf(estimate) {
   const totals = [['Subtotal', estimate.subtotal], ['Discount', -estimate.discountTotal], ['Tax', estimate.taxTotal], ['Additional charges', estimate.additionalCharges], ['GRAND TOTAL', estimate.grandTotal]];
   const totalBoxX=112,totalBoxW=84; doc.setFillColor(241,246,243); doc.roundedRect(totalBoxX,y-5,totalBoxW,totals.length*7+7,2,2,'F');
   doc.setFontSize(9);
-  for (const [label, value] of totals) {
+  for (const [index, [label, value]] of totals.entries()) {
     const grand=label==='GRAND TOTAL';
-    if(grand){doc.setDrawColor(23,60,53);doc.setLineWidth(0.6);doc.line(totalBoxX+3,y-4,totalBoxX+totalBoxW-3,y-4);doc.setTextColor(23,60,53);}
-    doc.setFont(undefined, grand ? 'bold' : 'normal'); doc.text(label, totalBoxX+5, y); doc.text(pdfMoney(value), totalBoxX+totalBoxW-4, y, { align:'right' }); y += 7;
+    if (index > 0) {
+      doc.setDrawColor(grand ? 23 : 211, grand ? 60 : 222, grand ? 53 : 216);
+      doc.setLineWidth(grand ? 0.6 : 0.25);
+      doc.line(totalBoxX+3, y-4, totalBoxX+totalBoxW-3, y-4);
+    }
+    if(grand){ doc.setTextColor(23,60,53); }
+    doc.setFont(undefined, grand ? 'bold' : 'normal');
+    doc.text(label, totalBoxX+5, y);
+    doc.text(pdfMoney(value), totalBoxX+totalBoxW-4, y, { align:'right' });
+    y += 7;
   }
   doc.setTextColor(35,45,43);
   const bankLines = [['Account holder',brand.bankAccountHolder],['Bank',brand.bankName],['Account number',brand.accountNumber],['IFSC',brand.ifscCode],['Branch',brand.branch],['UPI ID',brand.upiId]].filter(([,v])=>String(v||'').trim());
