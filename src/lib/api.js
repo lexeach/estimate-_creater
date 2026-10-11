@@ -1,6 +1,4 @@
-const RAW_API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:10000/api').trim().replace(/\/+$/, '');
-// Accept either the Render service root URL or a URL already ending in /api.
-const API_BASE = /\/api$/i.test(RAW_API_URL) ? RAW_API_URL : `${RAW_API_URL}/api`;
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:10000/api').replace(/\/$/, '');
 export const getToken = () => localStorage.getItem('salesdesk_token');
 export const setToken = token => token ? localStorage.setItem('salesdesk_token', token) : localStorage.removeItem('salesdesk_token');
 export async function api(path, options = {}) {

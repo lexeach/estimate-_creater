@@ -7,66 +7,82 @@ function writeWrapped(doc, text, x, y, width, lineHeight = 5) {
 }
 export function estimatePdf(estimate) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  doc.setFillColor(23, 60, 53); doc.rect(0, 0, 210, 36, 'F');
-  doc.setTextColor(255,255,255); doc.setFontSize(18); doc.text(businessName, 14, 16);
-  doc.setFontSize(10); doc.text('ESTIMATE / QUOTATION', 14, 25);
-  doc.setFontSize(10); doc.text(estimate.estimateNumber || 'Estimate', 196, 16, { align: 'right' });
-  doc.setTextColor(35,45,43); let y = 47;
-  doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text('Prepared for', 14, y); doc.setFont(undefined, 'normal'); y += 6;
+  const brand = estimate.bankDetails || {};
+  const title = brand.businessName || businessName;
+  // Branded masthead with optional uploaded logo and seller contact details.
+  doc.setFillColor(23, 60, 53); doc.rect(0, 0, 210, 43, 'F');
+  doc.setDrawColor(119, 190, 164); doc.setLineWidth(0.8); doc.line(14, 40, 196, 40);
+  let textX = 14;
+  if (brand.logoDataUrl) {
+    try {
+      const fmt = brand.logoDataUrl.startsWith('data:image/png') ? 'PNG' : brand.logoDataUrl.startsWith('data:image/webp') ? 'WEBP' : 'JPEG';
+      doc.addImage(brand.logoDataUrl, fmt, 14, 7, 24, 24, undefined, 'FAST'); textX = 43;
+    } catch (_) { textX = 14; }
+  }
+  doc.setTextColor(255,255,255); doc.setFontSize(17); doc.setFont(undefined,'bold'); doc.text(title, textX, 15, { maxWidth: 112 });
+  doc.setFont(undefined,'normal'); doc.setFontSize(8.5);
+  let contactY = 21;
+  for (const line of [brand.businessAddress, brand.businessPhone, brand.businessEmail, brand.businessWebsite].filter(v => String(v || '').trim())) {
+    const lines = doc.splitTextToSize(String(line), 115); doc.text(lines, textX, contactY); contactY += lines.length * 4;
+  }
+  doc.setFontSize(10); doc.setFont(undefined,'bold'); doc.text('ESTIMATE / QUOTATION', 196, 27, { align:'right' });
+  doc.setFont(undefined,'normal'); doc.setFontSize(8.5); doc.text(estimate.estimateNumber || 'Estimate', 196, 33, { align:'right' });
+  doc.setTextColor(35,45,43); let y = 52;
+  doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text('PREPARED FOR', 14, y); doc.setFont(undefined, 'normal'); y += 6;
   const c = estimate.clientSnapshot || {};
   y = writeWrapped(doc, c.businessName ? `${c.name} (${c.businessName})` : c.name, 14, y, 90);
-  y = writeWrapped(doc, c.phone, 14, y, 90); y = writeWrapped(doc, c.billingAddress, 14, y, 90);
-  doc.setFontSize(9); doc.text(`Date: ${dateText(estimate.createdAt)}`, 196, 48, { align: 'right' });
-  if (estimate.validUntil) doc.text(`Valid until: ${dateText(estimate.validUntil)}`, 196, 54, { align: 'right' });
-  y = Math.max(y + 8, 70);
-  const columns = [14, 83, 111, 130, 153, 176];
-  doc.setFillColor(235,241,238); doc.rect(14, y-5, 182, 9, 'F'); doc.setFont(undefined,'bold'); doc.setFontSize(8);
-  ['Product / Company','Qty','Rate','Disc.','Tax','Amount'].forEach((t,i) => doc.text(t, columns[i], y, i ? { align:'right' } : {}));
-  doc.setFont(undefined,'normal'); y += 8;
-  for (const item of estimate.items || []) {
-    if (y > 255) { doc.addPage(); y = 18; }
-    y = writeWrapped(doc, `${item.productName}\n${item.companyName}`, columns[0], y, 65, 4);
-    doc.text(String(item.quantity), columns[1], y-4, { align:'right' });
-    doc.text(money(item.unitPrice), columns[2], y-4, { align:'right' });
-    doc.text(`${item.discountPercent || 0}%`, columns[3], y-4, { align:'right' });
-    doc.text(`${item.taxRate || 0}%`, columns[4], y-4, { align:'right' });
-    doc.text(money(item.lineTotal), columns[5], y-4, { align:'right' });
-    y += 3; doc.setDrawColor(225,230,227); doc.line(14,y,196,y); y += 5;
+  y = writeWrapped(doc, c.phone, 14, y, 90); y = writeWrapped(doc, c.email, 14, y, 90); y = writeWrapped(doc, c.billingAddress, 14, y, 90);
+  doc.setFontSize(9); doc.text(`Date: ${dateText(estimate.createdAt)}`, 196, 52, { align: 'right' });
+  if (estimate.validUntil) doc.text(`Valid until: ${dateText(estimate.validUntil)}`, 196, 58, { align: 'right' });
+  y = Math.max(y + 8, 76);
+  const x0=14, x1=83, x2=111, x3=130, x4=153, x5=176, x6=196;
+  const cols = [x0,x1,x2,x3,x4,x5,x6];
+  doc.setFillColor(23,60,53); doc.roundedRect(x0,y-5,182,9,1,1,'F'); doc.setTextColor(255,255,255); doc.setFont(undefined,'bold'); doc.setFontSize(8);
+  ['Product / Company','Qty','Rate','Disc.','Tax','Amount'].forEach((t,i) => doc.text(t, [x0,x1,x2,x3,x4,x5][i], y, i ? { align:'right' } : {}));
+  doc.setTextColor(35,45,43); doc.setFont(undefined,'normal'); y += 4;
+  for (let idx=0; idx<(estimate.items||[]).length; idx++) {
+    const item=estimate.items[idx];
+    const productLines=doc.splitTextToSize(`${item.productName}\n${item.companyName}`,65);
+    const rowH=Math.max(11, productLines.length*4+4);
+    if (y+rowH>260) { doc.addPage(); y=20; }
+    if (idx%2===0) { doc.setFillColor(246,249,247); doc.rect(x0,y-2,182,rowH,'F'); }
+    doc.setDrawColor(211,222,216); doc.setLineWidth(0.25);
+    doc.line(x0,y-2,x6,y-2); doc.line(x0,y+rowH-2,x6,y+rowH-2);
+    for (const x of cols) doc.line(x,y-2,x,y+rowH-2);
+    doc.setFontSize(8.5); doc.setFont(undefined,'bold'); doc.text(String(item.productName||''),x0+2,y+3);
+    doc.setFont(undefined,'normal'); doc.setTextColor(105,119,112); doc.setFontSize(7.5); doc.text(String(item.companyName||''),x0+2,y+7);
+    doc.setTextColor(35,45,43); doc.setFontSize(8);
+    doc.text(String(item.quantity),x1-2,y+4,{align:'right'}); doc.text(money(item.unitPrice),x2-2,y+4,{align:'right'}); doc.text(`${item.discountPercent||0}%`,x3-2,y+4,{align:'right'}); doc.text(`${item.taxRate||0}%`,x4-2,y+4,{align:'right'}); doc.setFont(undefined,'bold'); doc.text(money(item.lineTotal),x6-2,y+4,{align:'right'}); doc.setFont(undefined,'normal');
+    y += rowH;
   }
-  y = Math.max(y + 4, 90);
-  if (y > 250) { doc.addPage(); y = 20; }
-  const totals = [['Subtotal', estimate.subtotal], ['Discount', -estimate.discountTotal], ['Tax', estimate.taxTotal], ['Additional charges', estimate.additionalCharges], ['Grand total', estimate.grandTotal]];
-  doc.setFontSize(10);
-  for (const [label, value] of totals) { doc.setFont(undefined, label === 'Grand total' ? 'bold' : 'normal'); doc.text(label, 132, y); doc.text(money(value), 196, y, { align:'right' }); y += 7; }
-  const bank = estimate.bankDetails || {};
-  const bankLines = [
-    ['Account holder', bank.bankAccountHolder], ['Bank', bank.bankName],
-    ['Account number', bank.accountNumber], ['IFSC', bank.ifscCode],
-    ['Branch', bank.branch], ['UPI ID', bank.upiId]
-  ].filter(([, value]) => String(value || '').trim());
-  if (bankLines.length || bank.paymentInstructions) {
-    y += 5;
-    if (y > 250) { doc.addPage(); y = 20; }
-    doc.setFont(undefined,'bold'); doc.setFontSize(10); doc.text('PAYMENT DETAILS',14,y); y += 6;
-    doc.setFont(undefined,'normal'); doc.setFontSize(9);
+  y += 7; if (y > 240) { doc.addPage(); y = 20; }
+  const totals = [['Subtotal', estimate.subtotal], ['Discount', -estimate.discountTotal], ['Tax', estimate.taxTotal], ['Additional charges', estimate.additionalCharges], ['GRAND TOTAL', estimate.grandTotal]];
+  const totalBoxX=112,totalBoxW=84; doc.setFillColor(241,246,243); doc.roundedRect(totalBoxX,y-5,totalBoxW,totals.length*7+7,2,2,'F');
+  doc.setFontSize(9);
+  for (const [label, value] of totals) {
+    const grand=label==='GRAND TOTAL';
+    if(grand){doc.setDrawColor(23,60,53);doc.setLineWidth(0.6);doc.line(totalBoxX+3,y-4,totalBoxX+totalBoxW-3,y-4);doc.setTextColor(23,60,53);}
+    doc.setFont(undefined, grand ? 'bold' : 'normal'); doc.text(label, totalBoxX+5, y); doc.text(money(value), totalBoxX+totalBoxW-4, y, { align:'right' }); y += 7;
+  }
+  doc.setTextColor(35,45,43);
+  const bankLines = [['Account holder',brand.bankAccountHolder],['Bank',brand.bankName],['Account number',brand.accountNumber],['IFSC',brand.ifscCode],['Branch',brand.branch],['UPI ID',brand.upiId]].filter(([,v])=>String(v||'').trim());
+  if (bankLines.length || brand.paymentInstructions) {
+    y += 5; if (y > 245) { doc.addPage(); y = 20; }
+    doc.setFillColor(23,60,53); doc.roundedRect(14,y-5,182,8,1,1,'F'); doc.setTextColor(255,255,255); doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.text('PAYMENT DETAILS',18,y); y+=8;
+    doc.setTextColor(35,45,43); doc.setFontSize(8.5);
     for (const [label,value] of bankLines) {
       if (y > 270) { doc.addPage(); y = 20; }
-      doc.setFont(undefined,'bold'); doc.text(`${label}:`,14,y); doc.setFont(undefined,'normal');
-      const valueLines = doc.splitTextToSize(String(value),150);
-      doc.text(valueLines,48,y); y += Math.max(5,valueLines.length*4.5);
+      doc.setDrawColor(220,228,223); doc.line(14,y+2,196,y+2); doc.setFont(undefined,'bold'); doc.text(`${label}:`,18,y); doc.setFont(undefined,'normal'); doc.text(String(value),60,y,{maxWidth:130}); y+=6;
     }
-    if (bank.paymentInstructions) {
-      y += 1; if (y > 270) { doc.addPage(); y = 20; }
-      doc.setFont(undefined,'bold'); doc.text('Payment instructions',14,y); doc.setFont(undefined,'normal');
-      y = writeWrapped(doc,bank.paymentInstructions,14,y+5,180,4.5);
-    }
+    if (brand.paymentInstructions) { y+=1; doc.setFont(undefined,'bold'); doc.text('Payment instructions:',18,y); doc.setFont(undefined,'normal'); y=writeWrapped(doc,brand.paymentInstructions,18,y+5,174,4.5); }
   }
-  if (estimate.notes) { y += 5; if (y > 270) { doc.addPage(); y = 20; } doc.setFont(undefined,'bold'); doc.text('Notes',14,y); doc.setFont(undefined,'normal'); y = writeWrapped(doc, estimate.notes,14,y+5,180); }
-  if (estimate.terms) { y += 5; if (y > 270) { doc.addPage(); y = 20; } doc.setFont(undefined,'bold'); doc.text('Terms & conditions',14,y); doc.setFont(undefined,'normal'); y = writeWrapped(doc, estimate.terms,14,y+5,180); }
-  if (y > 278) { doc.addPage(); y = 20; }
-  doc.setFontSize(8); doc.setTextColor(100,110,106); doc.text('This estimate is not a tax invoice. Final terms are subject to confirmation.', 14, Math.min(285,Math.max(y+6,285)));
+  if (estimate.notes) { y+=5; if(y>270){doc.addPage();y=20;} doc.setFont(undefined,'bold');doc.text('Notes',14,y);doc.setFont(undefined,'normal');y=writeWrapped(doc,estimate.notes,14,y+5,180); }
+  if (estimate.terms) { y+=5; if(y>270){doc.addPage();y=20;} doc.setFont(undefined,'bold');doc.text('Terms & conditions',14,y);doc.setFont(undefined,'normal');y=writeWrapped(doc,estimate.terms,14,y+5,180); }
+  if(y>278){doc.addPage();y=20;}
+  doc.setDrawColor(23,60,53);doc.setLineWidth(0.5);doc.line(14,282,196,282);doc.setFontSize(8);doc.setTextColor(100,110,106);doc.text('This estimate is not a tax invoice. Final terms are subject to confirmation.',14,287);
   doc.save(`${estimate.estimateNumber || 'estimate'}.pdf`);
 }
+
 export function companyOrderPdf(order, companyOrder) {
   const doc = new jsPDF({ unit:'mm', format:'a4' });
   doc.setFillColor(23,60,53); doc.rect(0,0,210,34,'F'); doc.setTextColor(255,255,255);
