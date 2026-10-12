@@ -20,3 +20,12 @@
 .public-pay-items{border-top:1px solid #e1e8e4;margin:18px 0}.public-pay-items>div{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #e1e8e4;font-size:13px}.public-pay-items strong{white-space:nowrap}
 .public-pay-button{justify-content:center;min-height:50px}.public-pay-footnote{display:flex;align-items:flex-start;gap:7px;color:#718078;font-size:12px;line-height:1.5;margin-top:20px}.public-pay-footnote svg{flex-shrink:0;color:#2e7d5b}.success-box{padding:12px 14px;background:#edf8f0;color:#20623c;border:1px solid #c5e8cf;border-radius:10px;margin:14px 0;font-size:13px;line-height:1.5}
 @media(max-width:560px){.public-pay-page{padding:14px}.public-pay-card{padding:22px;border-radius:16px}.public-pay-card h1{font-size:26px}.public-pay-amount strong{font-size:28px}}
+
+/* Manual, role-specific WhatsApp payment notifications */
+.wa-notify-panel{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:18px 0;padding:16px;border:1px solid #cfe3d9;border-radius:14px;background:linear-gradient(135deg,#f3faf6,#ffffff)}
+.wa-notify-panel>div:first-child{min-width:0}
+.wa-notify-panel strong{display:flex;align-items:center;gap:8px;color:#176344}
+.wa-notify-panel p{margin:6px 0}
+.wa-notify-panel small{display:block;margin-top:7px;color:#176344}
+.wa-notify-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+@media(max-width:720px){.wa-notify-panel{align-items:stretch;flex-direction:column}.wa-notify-actions{justify-content:flex-start}.wa-notify-actions .btn{width:100%;justify-content:center}}
