@@ -77,6 +77,17 @@ export function estimatePdf(estimate) {
     y += 7;
   }
   doc.setTextColor(35,45,43);
+  const publicAppUrl = (import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
+  if (estimate.paymentToken) {
+    y += 5; if (y > 255) { doc.addPage(); y = 20; }
+    const payUrl = `${publicAppUrl}/pay/${estimate.paymentToken}`;
+    doc.setFillColor(23,60,53); doc.roundedRect(14,y-5,182,13,2,2,'F');
+    doc.setTextColor(255,255,255); doc.setFont(undefined,'bold'); doc.setFontSize(10);
+    doc.text('PAY NOW  -  Secure online payment', 105, y+3, { align:'center' });
+    doc.link(14,y-5,182,13,{url:payUrl});
+    doc.setTextColor(35,45,43); doc.setFont(undefined,'normal'); doc.setFontSize(7.5);
+    doc.text('Click this button in the PDF to pay online.',14,y+12); y += 15;
+  }
   const bankLines = [['Account holder',brand.bankAccountHolder],['Bank',brand.bankName],['Account number',brand.accountNumber],['IFSC',brand.ifscCode],['Branch',brand.branch],['UPI ID',brand.upiId]].filter(([,v])=>String(v||'').trim());
   if (bankLines.length || brand.paymentInstructions) {
     y += 5; if (y > 245) { doc.addPage(); y = 20; }
