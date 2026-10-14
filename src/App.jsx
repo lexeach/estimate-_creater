@@ -115,7 +115,29 @@ export default function App(){
   async function loadOrder(order){try{const full=await api(`/orders/${order._id}`);setSelectedOrder(full);setModal({type:'order-detail'});}catch(e){notify(e.message,'error');}}
   async function updateCompanyStatus(order,companyOrder,status){try{await api(`/orders/${order._id}/company-orders/${companyOrder._id}/status`,{method:'PATCH',body:{status}});const full=await api(`/orders/${order._id}`);setSelectedOrder(full);await refresh();notify(`${companyOrder.companyName}: ${status}.`);}catch(e){notify(e.message,'error');}}
   async function addPayment(e){e.preventDefault();if(!selectedOrder)return;setSaving(true);try{await api(`/orders/${selectedOrder._id}/payments`,{method:'POST',body:paymentDraft});const full=await api(`/orders/${selectedOrder._id}`);setSelectedOrder(full);setPaymentDraft({amount:'',paymentMode:'UPI',paymentDate:new Date().toISOString().slice(0,10),reference:'',notes:''});await refresh();notify('Payment recorded.');}catch(e){notify(e.message,'error');}finally{setSaving(false);}}
-  function shareEstimate(est){estimatePdf(est);const phone=(est.clientSnapshot?.phone||'').replace(/\D/g,'');const text=encodeURIComponent(`Hello ${est.clientSnapshot?.name||''}, please find your estimate ${est.estimateNumber}. Total: ${money(est.grandTotal)}. I am sharing the PDF with you.`);if(phone)window.open(`https://wa.me/${phone}?text=${text}`,'_blank','noopener,noreferrer');else notify('PDF downloaded. Add a client phone number to open WhatsApp.');}
+  async function shareEstimate(est){
+    const phone=(est.clientSnapshot?.phone||'').replace(/\D/g,'');
+    const message=`Hello ${est.clientSnapshot?.name||''}, please find your estimate ${est.estimateNumber}. Total: ${money(est.grandTotal)}.`;
+    try {
+      const {blob,filename}=estimatePdf(est,{download:false});
+      const file=new File([blob],filename,{type:'application/pdf'});
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:`Estimate ${est.estimateNumber}`,text:message});
+        return;
+      }
+      // Desktop browsers generally cannot attach a local PDF directly to WhatsApp Web.
+      // Download the PDF first, then open WhatsApp with the prepared message.
+      estimatePdf(est);
+      if(phone) window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message+' Please find the attached PDF.')}`,'_blank','noopener,noreferrer');
+      else notify('PDF downloaded. Add a client phone number to open WhatsApp.');
+      if(phone) notify('PDF downloaded. WhatsApp opened with the message; attach the downloaded PDF manually.');
+    } catch(error) {
+      if(error?.name==='AbortError') return;
+      estimatePdf(est);
+      if(phone) window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message+' Please find the attached PDF.')}`,'_blank','noopener,noreferrer');
+      notify('PDF downloaded. If WhatsApp did not attach it automatically, attach the downloaded PDF manually.');
+    }
+  }
   function sendCompanyOrder(order,co){companyOrderPdf(order,co);const phone=(co.companySnapshot?.phone||'').replace(/\D/g,'');const text=encodeURIComponent(`Hello ${co.companyName}, please find order request ${co.companyOrderNumber} against master order ${order.orderNumber}. Please confirm availability and delivery timeline.`);if(phone)window.open(`https://wa.me/${phone}?text=${text}`,'_blank','noopener,noreferrer');else notify('Company order PDF downloaded. Add the company phone number to open WhatsApp.');if(co.status==='Pending')updateCompanyStatus(order,co,'Sent');}
 
   const publicPayMatch = window.location.pathname.match(/^\/pay\/([a-f0-9]{48})\/?$/i);

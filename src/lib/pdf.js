@@ -9,7 +9,7 @@ function writeWrapped(doc, text, x, y, width, lineHeight = 5) {
   const lines = doc.splitTextToSize(String(text || ''), width);
   doc.text(lines, x, y); return y + lines.length * lineHeight;
 }
-export function estimatePdf(estimate) {
+export function estimatePdf(estimate, { download = true } = {}) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const brand = estimate.bankDetails || {};
   const title = brand.businessName || businessName;
@@ -103,7 +103,10 @@ export function estimatePdf(estimate) {
   if (estimate.terms) { y+=5; if(y>270){doc.addPage();y=20;} doc.setFont(undefined,'bold');doc.text('Terms & conditions',14,y);doc.setFont(undefined,'normal');y=writeWrapped(doc,estimate.terms,14,y+5,180); }
   if(y>278){doc.addPage();y=20;}
   doc.setDrawColor(23,60,53);doc.setLineWidth(0.5);doc.line(14,282,196,282);doc.setFontSize(8);doc.setTextColor(100,110,106);doc.text('This estimate is not a tax invoice. Final terms are subject to confirmation.',14,287);
-  doc.save(`${estimate.estimateNumber || 'estimate'}.pdf`);
+  const filename = `${estimate.estimateNumber || 'estimate'}.pdf`;
+  const blob = doc.output('blob');
+  if (download) doc.save(filename);
+  return { blob, filename };
 }
 
 export function companyOrderPdf(order, companyOrder) {
