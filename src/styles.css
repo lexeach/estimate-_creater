@@ -33,3 +33,8 @@
 /* Separate order WhatsApp notification actions */
 .wa-notify-actions-separated{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
 @media(max-width:760px){.wa-notify-actions-separated{justify-content:stretch}.wa-notify-actions-separated .btn{flex:1 1 140px;justify-content:center}}
+
+/* Explicit save/cancel controls for supplier status changes */
+.co-status-actions{display:flex;align-items:flex-end;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.co-status-actions .btn{white-space:nowrap}
+@media(max-width:640px){.co-status-actions{justify-content:stretch;width:100%}.co-status-actions .btn{flex:1}.co-actions{align-items:stretch;flex-direction:column}.co-actions .status-select{width:100%}}
