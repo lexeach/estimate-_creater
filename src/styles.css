@@ -29,3 +29,7 @@
 .wa-notify-panel small{display:block;margin-top:7px;color:#176344}
 .wa-notify-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 @media(max-width:720px){.wa-notify-panel{align-items:stretch;flex-direction:column}.wa-notify-actions{justify-content:flex-start}.wa-notify-actions .btn{width:100%;justify-content:center}}
+
+/* Separate order WhatsApp notification actions */
+.wa-notify-actions-separated{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+@media(max-width:760px){.wa-notify-actions-separated{justify-content:stretch}.wa-notify-actions-separated .btn{flex:1 1 140px;justify-content:center}}
