@@ -116,8 +116,11 @@ export default function App(){
   async function updateCompanyStatus(order,companyOrder,status){try{await api(`/orders/${order._id}/company-orders/${companyOrder._id}/status`,{method:'PATCH',body:{status}});const full=await api(`/orders/${order._id}`);setSelectedOrder(full);await refresh();notify(`${companyOrder.companyName}: ${status}.`);}catch(e){notify(e.message,'error');}}
   async function addPayment(e){e.preventDefault();if(!selectedOrder)return;setSaving(true);try{await api(`/orders/${selectedOrder._id}/payments`,{method:'POST',body:paymentDraft});const full=await api(`/orders/${selectedOrder._id}`);setSelectedOrder(full);setPaymentDraft({amount:'',paymentMode:'UPI',paymentDate:new Date().toISOString().slice(0,10),reference:'',notes:''});await refresh();notify('Payment recorded.');}catch(e){notify(e.message,'error');}finally{setSaving(false);}}
   function openWhatsAppLink(phone,message){
-    const digits=String(phone||'').replace(/\\D/g,'');
+    let digits=String(phone||'').replace(/\D/g,'');
     if(!digits)return false;
+    // WhatsApp wa.me requires international format; assume India for local 10-digit numbers.
+    if(digits.length===10) digits=`91${digits}`;
+    else if(digits.length===11 && digits.startsWith('0')) digits=`91${digits.slice(1)}`;
     const url=`https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
     // On phones, navigate the current tab instead of creating a temporary blank tab.
     // This avoids leaving an extra browser tab open after WhatsApp launches.
