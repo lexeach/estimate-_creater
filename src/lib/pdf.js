@@ -123,6 +123,30 @@ export function companyOrderPdf(order, companyOrder) {
   doc.text('Product',14,y); doc.text('Qty',128,y,{align:'right'}); doc.text('Rate (INR)',158,y,{align:'right'}); doc.text('Amount (INR)',196,y,{align:'right'}); doc.setFont(undefined,'normal'); y+=8;
   for (const item of companyOrder.items || []) { y=writeWrapped(doc,item.productName,14,y,95); doc.text(String(item.quantity),128,y-4,{align:'right'}); doc.text(pdfAmount(item.unitPrice),158,y-4,{align:'right'}); doc.text(pdfAmount(item.lineTotal),196,y-4,{align:'right'}); y+=4; doc.line(14,y,196,y); y+=5; }
   y+=5; doc.setFont(undefined,'bold'); doc.text('Company order total',130,y); doc.text(pdfMoney(companyOrder.total),196,y,{align:'right'}); y+=10;
+  // Payment summary belongs to the master order and is included on every supplier order receipt for visibility.
+  const orderTotal = Number(order.grandTotal || 0);
+  const paidTotal = Number(order.paidTotal || 0);
+  const balanceDue = Math.max(0, Number(order.balanceDue ?? (orderTotal - paidTotal)));
+  const paymentStatus = order.paymentStatus || (balanceDue <= 0 ? 'Paid' : paidTotal > 0 ? 'Partially Paid' : 'Pending');
+  if (y > 235) { doc.addPage(); y = 20; }
+  doc.setFillColor(241,246,243); doc.roundedRect(112,y-5,84,31,2,2,'F');
+  doc.setFontSize(8.5); doc.setTextColor(35,45,43); doc.setFont(undefined,'normal');
+  doc.text('Master order total',116,y); doc.text(pdfMoney(orderTotal),192,y,{align:'right'}); y+=7;
+  doc.text('Paid / received',116,y); doc.setTextColor(23,120,83); doc.text(pdfMoney(paidTotal),192,y,{align:'right'}); y+=7;
+  doc.setTextColor(35,45,43); doc.text('Balance due',116,y); doc.setTextColor(balanceDue>0?180:23,balanceDue>0?100:120,balanceDue>0?20:83); doc.text(pdfMoney(balanceDue),192,y,{align:'right'}); y+=7;
+  doc.setTextColor(35,45,43); doc.setFont(undefined,'bold'); doc.text(`Payment status: ${paymentStatus}`,14,y); y+=7;
+  const payments = Array.isArray(order.payments) ? order.payments : [];
+  if (payments.length) {
+    if (y > 250) { doc.addPage(); y = 20; }
+    doc.setFont(undefined,'bold'); doc.text('Payment history',14,y); y+=5; doc.setFont(undefined,'normal'); doc.setFontSize(8);
+    for (const payment of payments) {
+      if (y > 275) { doc.addPage(); y = 20; }
+      const paymentLine = `${dateText(payment.paymentDate)} | ${payment.paymentMode || 'Payment'} | ${payment.reference || 'No reference'} | ${pdfMoney(payment.amount)}`;
+      y = writeWrapped(doc,paymentLine,14,y,180,4.5);
+    }
+    doc.setFontSize(9);
+  }
+  y+=3; if (y > 275) { doc.addPage(); y = 20; }
   doc.setFont(undefined,'normal'); doc.setFontSize(9); writeWrapped(doc,`Master order: ${order.orderNumber}. Please confirm availability, expected dispatch date and applicable fulfilment terms.`,14,y,180);
   doc.save(`${companyOrder.companyOrderNumber || order.orderNumber}-company-order.pdf`);
 }
